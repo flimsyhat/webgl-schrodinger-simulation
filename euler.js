@@ -1,4 +1,7 @@
 // ------
+// NOT WORKING YET
+// Initial texture generation is fine, but the evolution step returns a black frame
+//
 // Euler method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 // ------
 
