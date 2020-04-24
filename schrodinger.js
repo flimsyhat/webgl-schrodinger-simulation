@@ -1,8 +1,10 @@
-const canvas = document.getElementById('glCanvas')
+// ------
+// Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
+// ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
 const regl = createREGL(
-  Object.assign({canvas: canvas, 
+  Object.assign({canvas: document.getElementById('glCanvas'), 
                  //necessary for using framebuffers
                  extensions: 'OES_texture_float'}));
 
