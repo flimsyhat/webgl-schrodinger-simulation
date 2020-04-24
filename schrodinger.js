@@ -72,10 +72,10 @@ const create_texture = regl({
       vec2 st = gl_FragCoord.xy / u_resolution;
       
       // if we're past the first evolution step, use evolved wavefunction as input for the next step of the evolution
-      vec2 wave = (time > 1) ? updated_wavefunction(st) : initial_wavefunction(st);
+      vec2 wavefunction = (time > 1) ? updated_wavefunction(st) : initial_wavefunction(st);
       
       // set the color -- we are storing the real component in the R channel and the complex component in the G channel
-      gl_FragColor = vec4(wave, 0.0, 1.0);
+      gl_FragColor = vec4(wavefunction, 0.0, 1.0);
     }`,
 
   attributes: {
