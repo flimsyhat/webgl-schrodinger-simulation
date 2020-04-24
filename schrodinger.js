@@ -417,6 +417,8 @@ const draw_frame = regl({
     uniform vec2 u_resolution;
 
     #define k_combined(p) texture2D(k_combined_texture, p).xy
+    #define PI 3.141592653589793
+    #define hue2rgb(h) clamp(abs(mod(6.*(h)+vec3(0,4,2),6.)-3.)-1.,0.,1.)
 
     float potential(vec2 p) {
       return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01);
@@ -425,7 +427,8 @@ const draw_frame = regl({
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
       vec2 v = k_combined(st);
-      gl_FragColor = vec4(k_combined(st), 0.0, 1.0)
+      gl_FragColor = vec4(1.5 * length(v) * hue2rgb(atan(v.y,v.x)/(2.*PI)) +
+             0.25*potential(st), 1.0)
                      + vec4(potential(st), potential(st), potential(st), 1.0);
     }`,
 
