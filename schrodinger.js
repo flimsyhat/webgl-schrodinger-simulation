@@ -64,7 +64,7 @@ const create_texture = regl({
     #define length2(p) dot(p,p)
 
     vec2 initial_wavefunction(vec2 p) {
-      // the function returns a vec2 where the first component is real and the second is "complex"
+      // the function returns a vec2 where the first component is real and the second is imaginary
       return exp(-sigma * length2(p - vec2(0.5, 0.5))) * vec2(cos(k * (p.x)),  sin(k * (p.x)));
     }
 
@@ -78,7 +78,7 @@ const create_texture = regl({
       // if we're past the first evolution step, use evolved wavefunction as input for the next step of the evolution
       vec2 wavefunction = (time > 1) ? updated_wavefunction(st) : initial_wavefunction(st);
       
-      // set the color -- we are storing the real component in the R channel and the complex component in the G channel
+      // set the color -- we are storing the real component in the R channel and the imaginary component in the G channel
       gl_FragColor = vec4(wavefunction, 0.0, 1.0);
     }`,
 
