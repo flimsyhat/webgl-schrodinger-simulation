@@ -445,6 +445,7 @@ if (animationTickLimit >= 0) {
   console.log(`Limiting to ${animationTickLimit} ticks`);
 }
 
+// main animation loop
 const frameLoop = regl.frame(({ tick }) => {
     console.log(tick)
 	// clear the buffer
