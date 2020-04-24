@@ -2,7 +2,7 @@
 // NOT WORKING YET
 // Initial texture generation is fine, but the evolution step returns a black frame
 //
-// Central difference scheme for approximating the evolution of the time-dependent Schrodinger equation
+// first-order scheme for approximating the evolution of the time-dependent Schrodinger equation
 // ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
