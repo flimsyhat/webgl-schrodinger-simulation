@@ -34,9 +34,7 @@ let kCombined     = makeFrameBuffer();
 const dt = 0.05;
 
 const create_texture = regl({
-  framebuffer: initialBuffer, // framebuffer we are writing the output to, will store gl_FragColor
-  
-  uniforms: { // uniforms are inputs to the shader
+  uniforms: { // inputs to the shader
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k_combined_texture: kCombined, // final texture, which will get used as input after the first step
     time: regl.prop('tick')   
@@ -88,14 +86,13 @@ const create_texture = regl({
       4, -4
     ]
   },
-  
   // 3 vertices for triangle
   count: 3,
+  
+  framebuffer: initialBuffer, // framebuffer we are writing the output to, storing gl_FragColor
 });
 
 const k1 = regl({
-  framebuffer: k1Buffer,
-  
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     texture: initialBuffer,
@@ -129,15 +126,17 @@ const k1 = regl({
       return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01);
     }
 
-    // compute 
-
+    // compute the first "intermediate" wavefunction psi-k1
     vec2 k1(vec2 p) {
+      // calculate each component of the approximated laplacian
       vec2 psi_initial = psi(p);
       vec2 psi_y_inc = psi(p + vec2(0,1));
       vec2 psi_x_inc = psi(p + vec2(1,0));
       vec2 psi_y_dec = psi(p - vec2(0,1));
       vec2 psi_x_dec = psi(p - vec2(1,0));
+      // combine the components
       vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
+      // return the intermediate wavefunction psi-k1
       return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
     }
 
@@ -153,13 +152,12 @@ const k1 = regl({
       4, -4
     ]
   },
-  
   count: 3,
+  
+  framebuffer: k1Buffer,
 });
 
 const k2 = regl({
-  framebuffer: k2Buffer,
-  
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k1_texture: k1Buffer,
@@ -215,13 +213,12 @@ const k2 = regl({
       4, -4
     ]
   },
-  
   count: 3,
+  
+  framebuffer: k2Buffer,
 });
 
 const k3 = regl({
-  framebuffer: k3Buffer,
-  
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k2_texture: k2Buffer,
@@ -277,13 +274,12 @@ const k3 = regl({
       4, -4
     ]
   },
-  
   count: 3,
+  
+  framebuffer: k3Buffer,
 });
 
 const k4 = regl({
-  framebuffer: k4Buffer,
-    
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k3_texture: k3Buffer,
@@ -339,12 +335,22 @@ const k4 = regl({
       4, -4
     ]
   },
-  
   count: 3,
+  
+  framebuffer: k4Buffer,
 });
 
 const combine_k = regl({
-  framebuffer: kCombined,
+ uniforms: {
+    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
+    k1_texture: k1Buffer,
+    k2_texture: k2Buffer,
+    k3_texture: k3Buffer,
+    k4_texture: k4Buffer,
+    texture: initialBuffer,
+    dt : dt
+  },
+  
   vert:`
     precision mediump float;
     attribute vec2 position;
@@ -382,18 +388,9 @@ const combine_k = regl({
       4, -4
     ]
   },
-  
-  uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
-    k1_texture: k1Buffer,
-    k2_texture: k2Buffer,
-    k3_texture: k3Buffer,
-    k4_texture: k4Buffer,
-    texture: initialBuffer,
-    dt : dt
-  },
-  
   count: 3,
+  
+  framebuffer: kCombined,
 });
 
 const draw_frame = regl({
@@ -435,7 +432,6 @@ const draw_frame = regl({
       4, -4
     ]
   },
-  
   count: 3,
 });
 
