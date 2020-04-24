@@ -1,5 +1,9 @@
 // ------
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
+//
+// To Do:
+// - Figure out why the wavepacket isn't moving. The phase is cycling as expected, but the peak doesn't move
+// - Figure out how to reuse functions between shaders...right now there is a lot of duplication 
 // ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
