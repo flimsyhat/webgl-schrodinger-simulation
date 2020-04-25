@@ -11,6 +11,9 @@
 //    - 3D set energy (above potential) see how hole affects propagation
 // - Arbitrary initial position
 // - Arbitrary initial momentum (choose direction)
+// - Base time and space step sizes on the size of the canvas
+//
+// - ideally, we can create an instance of a simulation where we give it a potential, initial wavefunction, and target canvas
 // ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
