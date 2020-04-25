@@ -6,14 +6,14 @@
 // - Switch to using a texture for the potential (so we can define custom textures by drawing them, for example)
 //    - Scattering off a point
 //    - Single slit, Double slit
-//    - Reflection / Transmission (Tunneling)
+//    - Reflection / Transmission / Tunneling
 //    - Exponential well (harmonic oscillator)
 //    - 3D set energy (above potential) see how hole affects propagation
 // - Arbitrary initial position
 // - Arbitrary initial momentum (choose direction)
 // - Base time and space step sizes on the size of the canvas
 //
-// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components, vs. envelope)
+// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
 // ------
 
 const canvas = document.getElementById('glCanvas');
@@ -74,12 +74,12 @@ const create_texture = regl({
     // Initial wavefunction, nondispersive packet with some arbitrary values (we can adjust later)
 
     #define k 100.0 // Frequency
-    #define sigma 70.0 // Width of the envelope
+    #define sigma 120.0 // Width of the envelope
     #define length2(p) dot(p,p)
 
     vec2 initial_wavefunction(vec2 p) {
       // the function returns a vec2 where the first component is real and the second is imaginary
-      return exp(-sigma * length2(p - vec2(0.25, 0.25))) * vec2(cos(k * (p.x + p.y)),  sin(k * (p.x + p.y)));
+      return exp(-sigma * length2(p - vec2(0.5, 0.25))) * vec2(cos(k * (p.y)),  sin(k * (p.y)));
     }
 
     // The approximated wavefunction evolution, which we switch to after the first step
@@ -143,7 +143,9 @@ const k1 = regl({
 
     // define square well potential, returns 1.0 at the edges and 0.0 everwhere else
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01) + 0.5 * float(p.y < 0.505 && p.y > 0.495);
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     // compute the first "intermediate" wavefunction psi-k1
@@ -210,7 +212,9 @@ const k2 = regl({
     }
 
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01) + 0.5 * float(p.y < 0.505 && p.y > 0.495);
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k2(vec2 p) {
@@ -273,7 +277,9 @@ const k3 = regl({
     }
 
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01) + 0.5 * float(p.y < 0.505 && p.y > 0.495);
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + 2.5 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k3(vec2 p) {
@@ -336,7 +342,9 @@ const k4 = regl({
     }
 
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01) + 0.5 * float(p.y < 0.505 && p.y > 0.495);
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k4(vec2 p) {
@@ -423,7 +431,8 @@ const draw_frame = regl({
   // No framebuffer, because we are rendering a frame
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
-    k_combined_texture: kCombined
+    k_combined_texture: kCombined,
+    dx: dx
   },
   
   vert:`
@@ -437,13 +446,16 @@ const draw_frame = regl({
     precision mediump float;
     uniform sampler2D k_combined_texture;
     uniform vec2 u_resolution;
+    uniform float dx;
 
     #define k_combined(p) texture2D(k_combined_texture, p).xy
     #define PI 3.141592653589793
     #define hue2rgb(h) clamp(abs(mod(6.*(h)+vec3(0,4,2),6.)-3.)-1.,0.,1.)
 
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01) + 0.5 * float(p.y < 0.505 && p.y > 0.495);
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     void main () {
