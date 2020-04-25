@@ -278,7 +278,7 @@ const k3 = regl({
 
     float potential(vec2 p) {
       return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + 2.5 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
                    * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
@@ -478,13 +478,17 @@ const draw_frame = regl({
 
 const animationTickLimit = 2000; // -1 disables
 
+document.getElementById("frame_limit").innerHTML = animationTickLimit;
+
 if (animationTickLimit >= 0) {
   console.log(`Limiting to ${animationTickLimit} ticks`);
 }
 
+const frame_display = document.getElementById("frame");
+
 // main animation loop
 const frameLoop = regl.frame(({ tick }) => {
-    // console.log(tick)
+    frame_display.innerHTML = tick;
 	// clear the buffer
 	regl.clear({
 		// background color (black)
