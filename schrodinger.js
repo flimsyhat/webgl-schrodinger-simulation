@@ -13,19 +13,21 @@
 // - Arbitrary initial momentum (choose direction)
 // - Base time and space step sizes on the size of the canvas
 //
-// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components)
+// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components, vs. envelope)
 // ------
+
+const canvas = document.getElementById('glCanvas');
 
 //using regl, a functional wrapper for webgl, to make everything simpler
 const regl = createREGL(
-  Object.assign({canvas: document.getElementById('glCanvas'), 
+  Object.assign({canvas: canvas, 
                  //necessary for using framebuffers
                  extensions: 'OES_texture_float'}));
 
 function makeFrameBuffer() {
   // returns a framebuffer, a stored frame that doesn't get rendered. we will use a buffer to hold the result of each step of the approximation, and only render the final frame
   let fbo_texture = regl.texture({
-    shape: [512, 512, 4], // same size as the canvas, x and y are power of 2 (not sure if that's necessary, but typically textures are a power of 2), z is 4 because we're using rgba color
+    shape: [canvas.width, canvas.height, 4], // same size as the canvas, x and y are power of 2 (not sure if that's necessary, but typically textures are a power of 2), z is 4 because we're using rgba color
     type: 'float' // because it will be storing color floats
   })
   
@@ -47,7 +49,7 @@ let kCombined     = makeFrameBuffer();
 // time step size
 const dt = 0.25;
 // space step size
-const dx = 1.0 / 256.0;
+const dx = 1.0 / (canvas.width / 2); // 2px step
 
 const create_texture = regl({
   uniforms: { // inputs to the shader
@@ -470,7 +472,7 @@ if (animationTickLimit >= 0) {
 
 // main animation loop
 const frameLoop = regl.frame(({ tick }) => {
-    console.log(tick)
+    // console.log(tick)
 	// clear the buffer
 	regl.clear({
 		// background color (black)
