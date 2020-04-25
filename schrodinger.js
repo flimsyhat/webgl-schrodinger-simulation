@@ -13,7 +13,7 @@
 // - Arbitrary initial momentum (choose direction)
 // - Base time and space step sizes on the size of the canvas
 //
-// - ideally, we can create an instance of a simulation where we give it a potential, initial wavefunction, and target canvas
+// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components)
 // ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
