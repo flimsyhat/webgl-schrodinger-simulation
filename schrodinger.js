@@ -3,7 +3,7 @@
 //
 // To Do:
 // - Figure out how to reuse functions between shaders...not urgent though
-// - Textures
+// - Make a few potentials
 //    [x] Double slit
 //    [ ] Reflection / Transmission / Tunneling
 //    [ ] Exponential well (harmonic oscillator)
@@ -70,7 +70,7 @@ const two_slit_potential = regl({
 
     // defined potential (here we have a square potential around the canvas, and a two slit thing in the center)
     float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+      return float(p.y > (1. - 2.*dx) || p.y < (2.*dx) || p.x > (1. - 2.*dx) || p.x < (2.*dx))
                    + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
                    * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
