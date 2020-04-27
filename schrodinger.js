@@ -53,12 +53,15 @@ const dt = 0.25;
 const dx = 1.0 / (canvas.width / 2); // 2px step
 
 const setupDefault = regl({
+  // all the uniforms shared by the intermediate wavefunction shaders, like the canvas resolution and defined potential
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     dx: dx,
-    dt: dt
+    dt: dt,
+    potential_texture: potentialBuffer,
+    wave_texture: initialBuffer,
   }
-})
+});
 
 const two_slit_potential = regl({
    uniforms: { // inputs to the shader
@@ -108,7 +111,6 @@ const two_slit_potential = regl({
 
 const create_texture = regl({
   uniforms: { // inputs to the shader
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k_combined_texture: kCombined, // final texture, which will get used as input after the first step
     time: regl.prop('tick')   
   },
@@ -166,12 +168,7 @@ const create_texture = regl({
 });
 
 const k1 = regl({
-  uniforms: {
-    texture: initialBuffer,
-    potential_texture: potentialBuffer,
-  },
-  
-  vert:`
+vert:`
     precision mediump float;
     attribute vec2 position;
     void main () {
@@ -180,13 +177,13 @@ const k1 = regl({
 
   frag: `
     precision mediump float;
-    uniform sampler2D texture;
+    uniform sampler2D wave_texture;
     uniform sampler2D potential_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
-    #define initial_wavefunction(p) texture2D(texture, p).xy
+    #define initial_wavefunction(p) texture2D(wave_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
     #define psi(p) (initial_wavefunction(p))
 
@@ -229,8 +226,6 @@ const k1 = regl({
 const k2 = regl({
   uniforms: {
     k1_texture: k1Buffer,
-    texture: initialBuffer,
-    potential_texture: potentialBuffer,
   },
   
   vert:`
@@ -242,14 +237,14 @@ const k2 = regl({
 
   frag: `
     precision mediump float;
-    uniform sampler2D texture;
+    uniform sampler2D wave_texture;
     uniform sampler2D potential_texture;
     uniform sampler2D k1_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
-    #define wavefunction(p) texture2D(texture, p).xy
+    #define wavefunction(p) texture2D(wave_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
     #define k1(p) texture2D(k1_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k1(p))
@@ -287,12 +282,7 @@ const k2 = regl({
 
 const k3 = regl({
   uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k2_texture: k2Buffer,
-    texture: initialBuffer,
-    potential_texture: potentialBuffer,
-    dt : dt,
-    dx: dx
   },
   
   vert:`
@@ -304,14 +294,14 @@ const k3 = regl({
 
   frag: `
     precision mediump float;
-    uniform sampler2D texture;
+    uniform sampler2D wave_texture;
     uniform sampler2D potential_texture;
     uniform sampler2D k2_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
-    #define wavefunction(p) texture2D(texture, p).xy
+    #define wavefunction(p) texture2D(wave_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
     #define k2(p) texture2D(k2_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k2(p))
@@ -350,8 +340,6 @@ const k3 = regl({
 const k4 = regl({
   uniforms: {
     k3_texture: k3Buffer,
-    texture: initialBuffer,
-    potential_texture: potentialBuffer,
   },
   
   vert:`
@@ -363,14 +351,14 @@ const k4 = regl({
 
   frag: `
     precision mediump float;
-    uniform sampler2D texture;
+    uniform sampler2D wave_texture;
     uniform sampler2D potential_texture;
     uniform sampler2D k3_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
-    #define wavefunction(p) texture2D(texture, p).xy
+    #define wavefunction(p) texture2D(wave_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
     #define k3(p) texture2D(k3_texture, p).xy
     #define psi(p) (wavefunction(p) + dt * k3(p))
@@ -412,7 +400,6 @@ const combine_k = regl({
     k2_texture: k2Buffer,
     k3_texture: k3Buffer,
     k4_texture: k4Buffer,
-    texture: initialBuffer,
   },
   
   vert:`
@@ -424,7 +411,7 @@ const combine_k = regl({
 
   frag: `
     precision mediump float;
-    uniform sampler2D texture;
+    uniform sampler2D wave_texture;
     uniform sampler2D k1_texture;
     uniform sampler2D k2_texture;
     uniform sampler2D k3_texture;
@@ -432,7 +419,7 @@ const combine_k = regl({
     uniform vec2 u_resolution;
     uniform float dt;
 
-    #define psi(p) texture2D(texture, p).xy
+    #define psi(p) texture2D(wave_texture, p).xy
     #define k1(p) texture2D(k1_texture, p).xy
     #define k2(p) texture2D(k2_texture, p).xy
     #define k3(p) texture2D(k3_texture, p).xy
@@ -511,6 +498,7 @@ if (animationTickLimit >= 0) {
 
 const frame_display = document.getElementById("frame");
 
+// Create potential texture
 two_slit_potential();
 
 // main animation loop
