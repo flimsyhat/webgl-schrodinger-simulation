@@ -10,6 +10,8 @@
 // - Arbitrary initial wave position/momentum
 //
 // Note: ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
+//
+// For 3D -- 
 // ------
 
 const canvas = document.getElementById('glCanvas');
@@ -49,6 +51,14 @@ let potentialBuffer = makeFrameBuffer();
 const dt = 0.25;
 // space step size
 const dx = 1.0 / (canvas.width / 2); // 2px step
+
+const setupDefault = regl({
+  uniforms: {
+    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
+    dx: dx,
+    dt: dt
+  }
+})
 
 const two_slit_potential = regl({
    uniforms: { // inputs to the shader
@@ -119,7 +129,7 @@ const create_texture = regl({
     // Initial wavefunction, nondispersive packet with some arbitrary values (we can adjust later)
 
     #define k 100.0 // Frequency
-    #define sigma 120.0 // Width of the envelope
+    #define sigma 70.0 // Width of the envelope
     #define length2(p) dot(p,p)
 
     vec2 initial_wavefunction(vec2 p) {
@@ -157,11 +167,8 @@ const create_texture = regl({
 
 const k1 = regl({
   uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     texture: initialBuffer,
     potential_texture: potentialBuffer,
-    dt : dt,
-    dx: dx
   },
   
   vert:`
@@ -221,12 +228,9 @@ const k1 = regl({
 
 const k2 = regl({
   uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k1_texture: k1Buffer,
     texture: initialBuffer,
     potential_texture: potentialBuffer,
-    dt : dt,
-    dx: dx
   },
   
   vert:`
@@ -345,12 +349,9 @@ const k3 = regl({
 
 const k4 = regl({
   uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k3_texture: k3Buffer,
     texture: initialBuffer,
     potential_texture: potentialBuffer,
-    dt : dt,
-    dx: dx
   },
   
   vert:`
@@ -407,13 +408,11 @@ const k4 = regl({
 
 const combine_k = regl({
  uniforms: {
-    u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k1_texture: k1Buffer,
     k2_texture: k2Buffer,
     k3_texture: k3Buffer,
     k4_texture: k4Buffer,
     texture: initialBuffer,
-    dt : dt
   },
   
   vert:`
@@ -464,7 +463,6 @@ const draw_frame = regl({
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k_combined_texture: kCombined,
     potential_texture: potentialBuffer,
-    dx: dx
   },
   
   vert:`
@@ -479,7 +477,6 @@ const draw_frame = regl({
     uniform sampler2D k_combined_texture;
     uniform sampler2D potential_texture;
     uniform vec2 u_resolution;
-    uniform float dx;
 
     #define k_combined(p) texture2D(k_combined_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
@@ -525,12 +522,14 @@ const frameLoop = regl.frame(({ tick }) => {
 		color: [0, 0, 0, 1],
 		depth: 1,
 	});
-    create_texture({tick: tick});
-    k1();
-    k2();
-    k3();
-    k4();
-    combine_k();
+    setupDefault({}, () => {
+      create_texture({tick: tick});
+      k1();
+      k2();
+      k3();
+      k4();
+      combine_k();
+    })
     draw_frame();
 
 	// simple way of stopping the animation after a few ticks
