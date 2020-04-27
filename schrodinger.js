@@ -140,10 +140,13 @@ const two_slit_potential = regl({
   framebuffer: potentialBuffer, // framebuffer we are writing the output to, storing gl_FragColor
 });
 
+let initial_wave_position = [0.5, 0.25];
+
 const create_texture = regl({
   uniforms: { // inputs to the shader
     k_combined_texture: kCombined, // final texture, which will get used as input after the first step
-    time: regl.prop('tick')   
+    time: regl.prop('tick'),
+    wave_position: initial_wave_position,
   },
   
   vert: `
@@ -158,6 +161,7 @@ const create_texture = regl({
     uniform sampler2D k_combined_texture;
     uniform vec2 u_resolution;
     uniform int time;
+    uniform vec2 wave_position;
 
     // Initial wavefunction, nondispersive packet with some arbitrary values (we can adjust later)
 
@@ -167,7 +171,7 @@ const create_texture = regl({
 
     vec2 initial_wavefunction(vec2 p) {
       // the function returns a vec2 where the first component is real and the second is imaginary
-      return exp(-sigma * length2(p - vec2(0.5, 0.25))) * vec2(cos(k * (p.y)),  sin(k * (p.y)));
+      return exp(-sigma * length2(p - wave_position)) * vec2(cos(k * (p.y)),  sin(k * (p.y)));
     }
 
     // The approximated wavefunction evolution, which we switch to after the first step
