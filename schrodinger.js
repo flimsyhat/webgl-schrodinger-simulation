@@ -74,13 +74,14 @@ function switchTexture(initialTexture, t) {
   }
 }
 
+// utility function, included in shaders k1, k2, k3, and k4
 const divide_by_sqrt_neg_one = `
   vec2 divide_by_sqrt_neg_one(vec2 c) { 
       // divide by sqrt(-1), ie. rotate 270 deg
       return vec2(c.y, -c.x);
     }
 `
-
+// function for computing the approximation step, included in shaders k1, k2, k3, and k4
 const compute_k =`
     vec2 k(vec2 p) {
       vec2 psi_initial = psi(p);
