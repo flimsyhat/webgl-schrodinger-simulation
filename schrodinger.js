@@ -11,7 +11,7 @@
 //
 // Note: ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
 //
-// For 3D -- 
+// For 3D -- use final wave texture as a displacement map
 // ------
 
 const canvas = document.getElementById('glCanvas');
@@ -48,9 +48,10 @@ let kCombined       = makeFrameBuffer();
 let potentialBuffer = makeFrameBuffer();
 
 // time step size
-const dt = 0.25;
+const dt = 0.25; // arbitrary, but anything higher tends to blow up
 // space step size
 const dx = 1.0 / (canvas.width / 2); // 2px step
+let time = 0;
 
 const setupDefault = regl({
   // all the uniforms shared by the intermediate wavefunction shaders, like the canvas resolution and defined potential
@@ -58,10 +59,21 @@ const setupDefault = regl({
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     dx: dx,
     dt: dt,
+    time: time,
     potential_texture: potentialBuffer,
-    wave_texture: initialBuffer,
+    wave_texture: initialBuffer
   }
 });
+
+function switchTexture(initialTexture, t) {
+  // after the first frame, switch the simulation to use the output texture as input
+  if (t > 1) {
+    return kCombined;
+  }
+  else {
+    return initialTexture;
+  }
+}
 
 const two_slit_potential = regl({
    uniforms: { // inputs to the shader
@@ -490,12 +502,9 @@ const draw_frame = regl({
 
 const animationTickLimit = 2000; // -1 disables
 
+// Stuff for displaying frame number
+
 document.getElementById("frame_limit").innerHTML = animationTickLimit;
-
-if (animationTickLimit >= 0) {
-  console.log(`Limiting to ${animationTickLimit} ticks`);
-}
-
 const frame_display = document.getElementById("frame");
 
 // Create potential texture
@@ -510,6 +519,8 @@ const frameLoop = regl.frame(({ tick }) => {
 		color: [0, 0, 0, 1],
 		depth: 1,
 	});
+    let time = tick;
+    // step through approximation, rendering each step to a frame buffer 
     setupDefault({}, () => {
       create_texture({tick: tick});
       k1();
@@ -518,6 +529,7 @@ const frameLoop = regl.frame(({ tick }) => {
       k4();
       combine_k();
     })
+    // draw a frame to the screen from the frame buffer
     draw_frame();
 
 	// simple way of stopping the animation after a few ticks
