@@ -2,7 +2,6 @@
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 //
 // To Do:
-// - Figure out how to reuse functions between shaders...not urgent though
 // - Make a few potentials
 //    [x] Double slit
 //    [ ] Reflection / Transmission / Tunneling
@@ -74,6 +73,25 @@ function switchTexture(initialTexture, t) {
     return initialTexture;
   }
 }
+
+const divide_by_sqrt_neg_one = `
+  vec2 divide_by_sqrt_neg_one(vec2 c) { 
+      // divide by sqrt(-1), ie. rotate 270 deg
+      return vec2(c.y, -c.x);
+    }
+`
+
+const compute_k =`
+    vec2 k(vec2 p) {
+      vec2 psi_initial = psi(p);
+      vec2 psi_y_inc = psi(p + vec2(0,dx));
+      vec2 psi_x_inc = psi(p + vec2(dx,0));
+      vec2 psi_y_dec = psi(p - vec2(0,dx));
+      vec2 psi_x_dec = psi(p - vec2(dx,0));
+      vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
+    return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
+  }
+`
 
 const two_slit_potential = regl({
    uniforms: { // inputs to the shader
@@ -198,29 +216,13 @@ vert:`
     #define initial_wavefunction(p) texture2D(wave_texture, p).xy
     #define potential(p) texture2D(potential_texture, p).x
     #define psi(p) (initial_wavefunction(p))
-
-    vec2 divide_by_sqrt_neg_one(vec2 c) { 
-      // divide by sqrt(-1), ie. rotate 270 deg
-      return vec2(c.y, -c.x);
-    }
-
-    // compute the first "intermediate" wavefunction psi-k1
-    vec2 k1(vec2 p) {
-      // calculate each component of the approximated laplacian
-      vec2 psi_initial = psi(p);
-      vec2 psi_y_inc = psi(p + vec2(0,dx));
-      vec2 psi_x_inc = psi(p + vec2(dx,0));
-      vec2 psi_y_dec = psi(p - vec2(0,dx));
-      vec2 psi_x_dec = psi(p - vec2(dx,0));
-      // combine the components
-      vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
-      // return the intermediate wavefunction psi-k1
-      return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
-    }
+    
+    ${divide_by_sqrt_neg_one}
+    ${compute_k}
 
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
-      gl_FragColor = vec4(k1(st), 0.0, 1.0);
+      gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
   
   attributes: {
@@ -260,24 +262,13 @@ const k2 = regl({
     #define potential(p) texture2D(potential_texture, p).x
     #define k1(p) texture2D(k1_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k1(p))
-
-    vec2 divide_by_sqrt_neg_one(vec2 c) { /* divide by sqrt(-1), ie. rotate 270 deg */
-      return vec2(c.y, -c.x);
-    }
-
-    vec2 k2(vec2 p) {
-      vec2 psi_initial = psi(p);
-      vec2 psi_y_inc = psi(p + vec2(0,dx));
-      vec2 psi_x_inc = psi(p + vec2(dx,0));
-      vec2 psi_y_dec = psi(p - vec2(0,dx));
-      vec2 psi_x_dec = psi(p - vec2(dx,0));
-      vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
-      return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
-    }
+    
+    ${divide_by_sqrt_neg_one}
+    ${compute_k}
 
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
-      gl_FragColor = vec4(k2(st), 0.0, 1.0);
+      gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
   
   attributes: {
@@ -317,24 +308,13 @@ const k3 = regl({
     #define potential(p) texture2D(potential_texture, p).x
     #define k2(p) texture2D(k2_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k2(p))
-
-    vec2 divide_by_sqrt_neg_one(vec2 c) {
-      return vec2(c.y, -c.x);
-    }
-
-    vec2 k3(vec2 p) {
-      vec2 psi_initial = psi(p);
-      vec2 psi_y_inc = psi(p + vec2(0,dx));
-      vec2 psi_x_inc = psi(p + vec2(dx,0));
-      vec2 psi_y_dec = psi(p - vec2(0,dx));
-      vec2 psi_x_dec = psi(p - vec2(dx,0));
-      vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
-      return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
-    }
+    
+    ${divide_by_sqrt_neg_one}
+    ${compute_k}
 
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
-      gl_FragColor = vec4(k3(st), 0.0, 1.0);
+      gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
 
   attributes: {
@@ -374,24 +354,13 @@ const k4 = regl({
     #define potential(p) texture2D(potential_texture, p).x
     #define k3(p) texture2D(k3_texture, p).xy
     #define psi(p) (wavefunction(p) + dt * k3(p))
-
-    vec2 divide_by_sqrt_neg_one(vec2 c) {
-      return vec2(c.y, -c.x);
-    }
-
-    vec2 k4(vec2 p) {
-      vec2 psi_initial = psi(p);
-      vec2 psi_y_inc = psi(p + vec2(0,dx));
-      vec2 psi_x_inc = psi(p + vec2(dx,0));
-      vec2 psi_y_dec = psi(p - vec2(0,dx));
-      vec2 psi_x_dec = psi(p - vec2(dx,0));
-      vec2 laplacian = psi_y_inc + psi_x_inc + psi_y_dec + psi_x_dec - (4.0 * psi_initial);
-      return divide_by_sqrt_neg_one(-laplacian + potential(p) * psi_initial);
-    }
+    
+    ${divide_by_sqrt_neg_one}
+    ${compute_k}
 
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
-      gl_FragColor = vec4(k4(st), 0.0, 1.0);
+      gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
 
   attributes: {
