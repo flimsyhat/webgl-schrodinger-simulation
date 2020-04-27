@@ -2,18 +2,14 @@
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 //
 // To Do:
-// - Figure out how to reuse functions between shaders...right now there is a lot of duplication. Would like to be able to define an initial wavefunction and potential externally
-// - Switch to using a texture for the potential (so we can define custom textures by drawing them, for example)
-//    - Scattering off a point
-//    - Single slit, Double slit
-//    - Reflection / Transmission / Tunneling
-//    - Exponential well (harmonic oscillator)
-//    - 3D set energy (above potential) see how hole affects propagation
-// - Arbitrary initial position
-// - Arbitrary initial momentum (choose direction)
-// - Base time and space step sizes on the size of the canvas
+// - Figure out how to reuse functions between shaders...not urgent though
+// - Textures
+//    [x] Double slit
+//    [ ] Reflection / Transmission / Tunneling
+//    [ ] Exponential well (harmonic oscillator)
+// - Arbitrary initial wave position/momentum
 //
-// - ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
+// Note: ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
 // ------
 
 const canvas = document.getElementById('glCanvas');
@@ -39,17 +35,66 @@ function makeFrameBuffer() {
 }
 
 // for each step of the approximation, we create a buffer to hold the results
-let initialBuffer = makeFrameBuffer();
-let k1Buffer      = makeFrameBuffer();
-let k2Buffer      = makeFrameBuffer();
-let k3Buffer      = makeFrameBuffer();
-let k4Buffer      = makeFrameBuffer();
-let kCombined     = makeFrameBuffer();
+let initialBuffer   = makeFrameBuffer();
+let k1Buffer        = makeFrameBuffer();
+let k2Buffer        = makeFrameBuffer();
+let k3Buffer        = makeFrameBuffer();
+let k4Buffer        = makeFrameBuffer();
+let kCombined       = makeFrameBuffer();
+
+// we'll also create a buffer to hold the potential
+let potentialBuffer = makeFrameBuffer();
 
 // time step size
 const dt = 0.25;
 // space step size
 const dx = 1.0 / (canvas.width / 2); // 2px step
+
+const two_slit_potential = regl({
+   uniforms: { // inputs to the shader
+     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
+     dx: dx
+  },
+  
+  vert: `
+    precision mediump float;
+    attribute vec2 position;
+    void main () {
+      gl_Position = vec4(position, 0, 1);
+    }`,
+
+  frag: `
+    precision mediump float;
+    uniform vec2 u_resolution;
+    uniform float dx;
+
+    // defined potential (here we have a square potential around the canvas, and a two slit thing in the center)
+    float potential(vec2 p) {
+      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
+                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
+                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
+    }
+    void main () {
+      // normalize the coordinates to the resolution of the canvas
+      vec2 st = gl_FragCoord.xy / u_resolution;
+      
+      // set the color
+      gl_FragColor = vec4(vec3(potential(st)), 1.0);
+    }`,
+
+  attributes: {
+    // triangle big enough to fill the screen
+    position: [
+      -4, 0,
+      4, 4,
+      4, -4
+    ]
+  },
+  // 3 vertices for triangle
+  count: 3,
+  
+  framebuffer: potentialBuffer, // framebuffer we are writing the output to, storing gl_FragColor
+});
 
 const create_texture = regl({
   uniforms: { // inputs to the shader
@@ -114,6 +159,7 @@ const k1 = regl({
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     texture: initialBuffer,
+    potential_texture: potentialBuffer,
     dt : dt,
     dx: dx
   },
@@ -128,24 +174,18 @@ const k1 = regl({
   frag: `
     precision mediump float;
     uniform sampler2D texture;
-    uniform sampler2D k_combined_texture;
+    uniform sampler2D potential_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
     #define initial_wavefunction(p) texture2D(texture, p).xy
+    #define potential(p) texture2D(potential_texture, p).x
     #define psi(p) (initial_wavefunction(p))
 
     vec2 divide_by_sqrt_neg_one(vec2 c) { 
       // divide by sqrt(-1), ie. rotate 270 deg
       return vec2(c.y, -c.x);
-    }
-
-    // define square well potential, returns 1.0 at the edges and 0.0 everwhere else
-    float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
-                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     // compute the first "intermediate" wavefunction psi-k1
@@ -184,6 +224,7 @@ const k2 = regl({
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k1_texture: k1Buffer,
     texture: initialBuffer,
+    potential_texture: potentialBuffer,
     dt : dt,
     dx: dx
   },
@@ -198,23 +239,19 @@ const k2 = regl({
   frag: `
     precision mediump float;
     uniform sampler2D texture;
+    uniform sampler2D potential_texture;
     uniform sampler2D k1_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
     #define wavefunction(p) texture2D(texture, p).xy
+    #define potential(p) texture2D(potential_texture, p).x
     #define k1(p) texture2D(k1_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k1(p))
 
     vec2 divide_by_sqrt_neg_one(vec2 c) { /* divide by sqrt(-1), ie. rotate 270 deg */
       return vec2(c.y, -c.x);
-    }
-
-    float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
-                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k2(vec2 p) {
@@ -249,6 +286,7 @@ const k3 = regl({
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k2_texture: k2Buffer,
     texture: initialBuffer,
+    potential_texture: potentialBuffer,
     dt : dt,
     dx: dx
   },
@@ -263,23 +301,19 @@ const k3 = regl({
   frag: `
     precision mediump float;
     uniform sampler2D texture;
+    uniform sampler2D potential_texture;
     uniform sampler2D k2_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
     #define wavefunction(p) texture2D(texture, p).xy
+    #define potential(p) texture2D(potential_texture, p).x
     #define k2(p) texture2D(k2_texture, p).xy
     #define psi(p) (wavefunction(p) + 0.5 * dt * k2(p))
 
     vec2 divide_by_sqrt_neg_one(vec2 c) {
       return vec2(c.y, -c.x);
-    }
-
-    float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
-                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k3(vec2 p) {
@@ -314,6 +348,7 @@ const k4 = regl({
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k3_texture: k3Buffer,
     texture: initialBuffer,
+    potential_texture: potentialBuffer,
     dt : dt,
     dx: dx
   },
@@ -328,23 +363,19 @@ const k4 = regl({
   frag: `
     precision mediump float;
     uniform sampler2D texture;
+    uniform sampler2D potential_texture;
     uniform sampler2D k3_texture;
     uniform vec2 u_resolution;
     uniform float dt;
     uniform float dx;
 
     #define wavefunction(p) texture2D(texture, p).xy
+    #define potential(p) texture2D(potential_texture, p).x
     #define k3(p) texture2D(k3_texture, p).xy
     #define psi(p) (wavefunction(p) + dt * k3(p))
 
     vec2 divide_by_sqrt_neg_one(vec2 c) {
       return vec2(c.y, -c.x);
-    }
-
-    float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
-                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
 
     vec2 k4(vec2 p) {
@@ -432,6 +463,7 @@ const draw_frame = regl({
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     k_combined_texture: kCombined,
+    potential_texture: potentialBuffer,
     dx: dx
   },
   
@@ -445,25 +477,21 @@ const draw_frame = regl({
   frag: `
     precision mediump float;
     uniform sampler2D k_combined_texture;
+    uniform sampler2D potential_texture;
     uniform vec2 u_resolution;
     uniform float dx;
 
     #define k_combined(p) texture2D(k_combined_texture, p).xy
+    #define potential(p) texture2D(potential_texture, p).x
     #define PI 3.141592653589793
     #define hue2rgb(h) clamp(abs(mod(6.*(h)+vec3(0,4,2),6.)-3.)-1.,0.,1.)
-
-    float potential(vec2 p) {
-      return float(p.y > 0.99 || p.y < 0.01 || p.x > 0.99 || p.x < 0.01)
-                   + float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
-                   * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
-    }
 
     void main () {
       vec2 st = gl_FragCoord.xy / u_resolution;
       vec2 v = k_combined(st);
       // gl_FragColor = vec4(1.5 * length(v) * hue2rgb(atan(v.y,v.x)/(2.*PI)) + 0.25*potential(st), 1.0) + vec4(potential(st), potential(st), potential(st), 1.0);
       gl_FragColor = vec4(0.0, v, 1.0)
-                     + vec4(potential(st), potential(st), potential(st), 1.0);
+                     + vec4(vec3(potential(st)), 1.0);
     }`,
 
   attributes: {
@@ -485,6 +513,8 @@ if (animationTickLimit >= 0) {
 }
 
 const frame_display = document.getElementById("frame");
+
+two_slit_potential();
 
 // main animation loop
 const frameLoop = regl.frame(({ tick }) => {
