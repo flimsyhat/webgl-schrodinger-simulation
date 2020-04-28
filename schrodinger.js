@@ -2,6 +2,7 @@
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 //
 // To Do:
+// - Fix mobile click behavior (doesn't work on mobile..)
 // - Make a few potentials (and ability to select between them)
 //    [x] Double slit
 //    [ ] Reflection / Transmission / Tunneling
@@ -547,29 +548,35 @@ frameLoop();
 // ------
 // MOUSE EVENTS
 //
-// This is still messy, particularly the logic for clearing the 2d canvas
+// This is still messy...
 // ------
 
 let MOUSE_DOWN = false;
 
-function getCursorPosition(canvas, event) {
+function getCursorPosition(canvas) {
   const rect = canvas.getBoundingClientRect()
-  let x = (event.clientX - rect.left) / glCanvas.width;
-  let y = 1.0 - (event.clientY - rect.top) / glCanvas.height;
+  let x = (event.clientX - rect.left) / canvas.width;
+  let y = 1.0 - (event.clientY - rect.top) / canvas.height;
   return [x, y]
 }
 
-topCanvas.addEventListener('mousedown', function(e) {
+// START
+
+topCanvas.addEventListener('pointerdown', function(e) {
   MOUSE_DOWN = true;
-  wave_position = getCursorPosition(topCanvas, e);
+  wave_position = getCursorPosition(glCanvas);
+  console.log("mousedown")
 })
 
-topCanvas.addEventListener('mouseup', function(e) {
+// END
+
+topCanvas.addEventListener('pointerup', function(e) {
   MOUSE_DOWN = false;
   clear_2d_canvas(topCanvas)
+  console.log("mouseup")
 })
 
-topCanvas.addEventListener ("mouseout", function(e) {
+topCanvas.addEventListener ("pointerout", function(e) {
   // if mouse is down when the mouse leaves the canvas, set the MOUSE_DOWN flag to false and start the simulation
   if (!MOUSE_DOWN) {
     return;
@@ -578,19 +585,24 @@ topCanvas.addEventListener ("mouseout", function(e) {
   clear_2d_canvas(topCanvas)
 })
 
+// WHILE
 
-window.addEventListener('mousemove', function(e) { 
+window.addEventListener('pointermove', function(e) { 
   if (!MOUSE_DOWN) {
     return;
   }
-  let cursor_position = getCursorPosition(glCanvas, e);
+  update_wave_angle();
+})
+
+function update_wave_angle() {
+  let cursor_position = getCursorPosition(glCanvas);
   let min_distance = 0.025;
   if (distance(wave_position, cursor_position) > min_distance) {
     wave_angle = angle(wave_position, cursor_position);
     wave_angle_components = angle_components(angle);
     draw_line(topCanvas, wave_position, cursor_position)
   }
-})
+}
 
 // ------
 // Conversion functions used by the mouseclick events
