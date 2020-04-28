@@ -2,29 +2,140 @@
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 //
 // To Do:
-// - Make a few potentials
+// - Make a few potentials (and ability to select between them)
 //    [x] Double slit
 //    [ ] Reflection / Transmission / Tunneling
 //    [ ] Exponential well (harmonic oscillator)
-// - Arbitrary initial wave position/momentum
+// - Fix initial wave behavior -- right now if the wave is created and part of it intersects the potential, we get really fast waves. Need to set those inersections to 0 initially
 //
 // Note: ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
 //
-// For 3D -- use final wave texture as a displacement map
+// For 3D -- maybe use final wave texture as a displacement map?
 // ------
 
-const canvas = document.getElementById('glCanvas');
+// ------
+// MOUSE EVENTS
+//
+// This is still messy, particularly the logic for clearing the 2d canvas
+// ------
+
+let MOUSE_DOWN = false;
+
+const glCanvas    = document.getElementById('glCanvas');
+const topCanvas = document.getElementById('2dCanvas');
+
+function getCursorPosition(canvas, event) {
+  const rect = canvas.getBoundingClientRect()
+  let x = (event.clientX - rect.left) / glCanvas.width;
+  let y = 1.0 - (event.clientY - rect.top) / glCanvas.height;
+  return [x, y]
+}
+
+function convert_to_canvas_coordinates(coord) {
+  let x = coord[0] * topCanvas.width;
+  let y = (1 - coord[1]) * topCanvas.height;
+  return [x, y]
+}
+
+topCanvas.addEventListener('mousedown', function(e) {
+  MOUSE_DOWN = true;
+  wave_position = getCursorPosition(topCanvas, e);
+})
+
+topCanvas.addEventListener('mouseup', function(e) {
+  MOUSE_DOWN = false;
+  clear_2d_canvas(topCanvas)
+})
+
+topCanvas.addEventListener ("mouseout", function(e) {
+  // if mouse is down when the mouse leaves the canvas, set the MOUSE_DOWN flag to false and start the simulation
+  if (!MOUSE_DOWN) {
+    return;
+  }
+  MOUSE_DOWN = false;
+  clear_2d_canvas(topCanvas)
+})
+
+
+window.addEventListener('mousemove', function(e) { 
+  if (!MOUSE_DOWN) {
+    return;
+  }
+  let cursor_position = getCursorPosition(topCanvas, e);
+  let min_distance = 0.025;
+  if (distance(wave_position, cursor_position) > min_distance) {
+    wave_angle = angle(wave_position, cursor_position);
+    wave_angle_components = angle_components(angle);
+    draw_line(topCanvas, wave_position, cursor_position)
+  }
+})
+
+// ------
+// Drawing the dashed line on the 2D top canvas
+// ------
+
+function draw_line(canvas, p_a, p_b) {
+  p_a = convert_to_canvas_coordinates(p_a)
+  p_b = convert_to_canvas_coordinates(p_b)
+  let ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height); // erase previous line
+  ctx.setLineDash([5, 3]);/*dashes are 5px and spaces are 3px*/
+  ctx.beginPath();
+  ctx.moveTo(p_a[0],p_a[1]);
+  ctx.lineTo(p_b[0],p_b[1]);
+  ctx.strokeStyle = 'rgb(255, 255, 255)';
+  ctx.stroke();
+}
+
+function clear_2d_canvas(canvas) {
+  let ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height);
+}
+
+// ------
+// Initial wave position, angle, and some conversion functions used by the mouse events when updating them
+// ------
+
+var wave_angle = Math.PI/2; // default wave direction is vertical, will be modified by mouseclick events
+
+var wave_position = [0.5, 0.25]; // initial wave position, will be modified mouseclick events
+
+var wave_angle_components = angle_components(angle);
+
+function distance(p_a, p_b) {
+  return Math.sqrt((p_a[0] - p_b[0]) ** 2 + (p_a[1] - p_b[1]) ** 2)
+}
+
+function angle(p_a, p_b) {
+  var dy = p_b[1] - p_a[1];
+  var dx = p_b[0] - p_a[0];
+  var theta = Math.atan2(dy, dx); // range (-PI, PI]
+  return theta;
+}
+
+function angle_components(angle) {
+  return [Math.cos(wave_angle), Math.sin(wave_angle)]
+}
+
+// time step size
+const dt = 0.25; // arbitrary, but anything higher tends to blow up
+// space step size
+const dx = 1.0 / (glCanvas.width / 2); // 2px step
+
+var elapsedTime = 0; // used to keep track of time since last mouseclick, since the animation loop continues incrementing regardless
+
+// ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
 const regl = createREGL(
-  Object.assign({canvas: canvas, 
+  Object.assign({canvas: glCanvas, 
                  //necessary for using framebuffers
                  extensions: 'OES_texture_float'}));
 
 function makeFrameBuffer() {
   // returns a framebuffer, a stored frame that doesn't get rendered. we will use a buffer to hold the result of each step of the approximation, and only render the final frame
   let fbo_texture = regl.texture({
-    shape: [canvas.width, canvas.height, 4], // same size as the canvas, x and y are power of 2 (not sure if that's necessary, but typically textures are a power of 2), z is 4 because we're using rgba color
+    shape: [glCanvas.width, glCanvas.height, 4], // same size as the canvas, x and y are power of 2 (not sure if that's necessary, but typically textures are a power of 2), z is 4 because we're using rgba color
     type: 'float' // because it will be storing color floats
   })
   
@@ -46,19 +157,13 @@ let kCombined       = makeFrameBuffer();
 // we'll also create a buffer to hold the potential
 let potentialBuffer = makeFrameBuffer();
 
-// time step size
-const dt = 0.25; // arbitrary, but anything higher tends to blow up
-// space step size
-const dx = 1.0 / (canvas.width / 2); // 2px step
-let time = 0;
-
 const setupDefault = regl({
   // all the uniforms shared by the intermediate wavefunction shaders, like the canvas resolution and defined potential
   uniforms: {
     u_resolution: ctx => [ctx.framebufferWidth,ctx.framebufferHeight],
     dx: dx,
     dt: dt,
-    time: time,
+    time: elapsedTime,
     potential_texture: potentialBuffer,
     wave_texture: initialBuffer
   }
@@ -140,13 +245,12 @@ const two_slit_potential = regl({
   framebuffer: potentialBuffer, // framebuffer we are writing the output to, storing gl_FragColor
 });
 
-let initial_wave_position = [0.5, 0.25];
-
 const create_texture = regl({
   uniforms: { // inputs to the shader
     k_combined_texture: kCombined, // final texture, which will get used as input after the first step
-    time: regl.prop('tick'),
-    wave_position: initial_wave_position,
+    time: regl.prop('time'),
+    wave_position: regl.prop('wave_position'),
+    wave_angles: regl.prop('wave_angles')
   },
   
   vert: `
@@ -162,16 +266,17 @@ const create_texture = regl({
     uniform vec2 u_resolution;
     uniform int time;
     uniform vec2 wave_position;
+    uniform vec2 wave_angles;
 
     // Initial wavefunction, nondispersive packet with some arbitrary values (we can adjust later)
 
     #define k 100.0 // Frequency
-    #define sigma 70.0 // Width of the envelope
+    #define sigma 100.0 // Width of the envelope
     #define length2(p) dot(p,p)
 
     vec2 initial_wavefunction(vec2 p) {
       // the function returns a vec2 where the first component is real and the second is imaginary
-      return exp(-sigma * length2(p - wave_position)) * vec2(cos(k * (p.y)),  sin(k * (p.y)));
+      return exp(-sigma * length2(p - wave_position)) * vec2(cos(k * (wave_angles.y * p.y + wave_angles.x * p.x)),  sin(k * (wave_angles.y * p.y + wave_angles.x * p.x)));
     }
 
     // The approximated wavefunction evolution, which we switch to after the first step
@@ -474,42 +579,51 @@ const draw_frame = regl({
   count: 3,
 });
 
-const animationTickLimit = 2000; // -1 disables
+const animationTimeLimit = 2000; // -1 disables
 
 // Stuff for displaying frame number
 
-document.getElementById("frame_limit").innerHTML = animationTickLimit;
+document.getElementById("frame_limit").innerHTML = animationTimeLimit;
 const frame_display = document.getElementById("frame");
 
 // Create potential texture
 two_slit_potential();
 
 // main animation loop
-const frameLoop = regl.frame(({ tick }) => {
-    frame_display.innerHTML = tick;
-	// clear the buffer
+function frameLoop() {
+  let frameLoop = regl.frame(() => {
+    
+    if (MOUSE_DOWN) {
+      elapsedTime = 0;
+    }
+        
+    elapsedTime += 1;
+    frame_display.innerHTML = elapsedTime;
+	
+    // clear the buffer
 	regl.clear({
 		// background color (black)
 		color: [0, 0, 0, 1],
 		depth: 1,
 	});
-    let time = tick;
+    
     // step through approximation, rendering each step to a frame buffer 
     setupDefault({}, () => {
-      create_texture({tick: tick});
+      create_texture({time: elapsedTime, wave_position: wave_position, wave_angles: wave_angle_components});
       k1();
       k2();
       k3();
       k4();
       combine_k();
     })
+    
     // draw a frame to the screen from the frame buffer
     draw_frame();
 
-	// simple way of stopping the animation after a few ticks
-	if (tick === animationTickLimit) {
-		console.log(`Hit tick ${tick}, canceling animation loop`);
-		// cancel this loop
-		frameLoop.cancel();
+	// simple way of looping the animation after a certain time
+	if (elapsedTime === animationTimeLimit) {
+      elapsedTime = 0;
 	}
-});
+})};
+
+frameLoop();
