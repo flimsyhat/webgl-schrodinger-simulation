@@ -7,90 +7,18 @@
 //    [ ] Reflection / Transmission / Tunneling
 //    [ ] Exponential well (harmonic oscillator)
 // - Fix initial wave behavior -- right now if the wave is created and part of it intersects the potential, we get really fast waves. Need to set those inersections to 0 initially
+// - Buttons to pause and restart
 //
 // Note: ideally, we create an instance of a simulation by passing it a potential, initial wavefunction, target canvas, time step size, animation tick limit, and shading style (phase vs. real & complex components vs. envelope)
 //
 // For 3D -- maybe use final wave texture as a displacement map?
-// ------
-
-// ------
-// MOUSE EVENTS
 //
-// This is still messy, particularly the logic for clearing the 2d canvas
+// Longer-term: Ability to draw custom potentials ?
 // ------
 
-let MOUSE_DOWN = false;
 
 const glCanvas  = document.getElementById('glCanvas');
 const topCanvas = document.getElementById('2dCanvas');
-
-function getCursorPosition(canvas, event) {
-  const rect = canvas.getBoundingClientRect()
-  let x = (event.clientX - rect.left) / glCanvas.width;
-  let y = 1.0 - (event.clientY - rect.top) / glCanvas.height;
-  return [x, y]
-}
-
-function convert_to_canvas_coordinates(coord) {
-  let x = coord[0] * topCanvas.width;
-  let y = (1 - coord[1]) * topCanvas.height;
-  return [x, y]
-}
-
-topCanvas.addEventListener('mousedown', function(e) {
-  MOUSE_DOWN = true;
-  wave_position = getCursorPosition(topCanvas, e);
-})
-
-topCanvas.addEventListener('mouseup', function(e) {
-  MOUSE_DOWN = false;
-  clear_2d_canvas(topCanvas)
-})
-
-topCanvas.addEventListener ("mouseout", function(e) {
-  // if mouse is down when the mouse leaves the canvas, set the MOUSE_DOWN flag to false and start the simulation
-  if (!MOUSE_DOWN) {
-    return;
-  }
-  MOUSE_DOWN = false;
-  clear_2d_canvas(topCanvas)
-})
-
-
-window.addEventListener('mousemove', function(e) { 
-  if (!MOUSE_DOWN) {
-    return;
-  }
-  let cursor_position = getCursorPosition(glCanvas, e);
-  let min_distance = 0.025;
-  if (distance(wave_position, cursor_position) > min_distance) {
-    wave_angle = angle(wave_position, cursor_position);
-    wave_angle_components = angle_components(angle);
-    draw_line(topCanvas, wave_position, cursor_position)
-  }
-})
-
-// ------
-// Drawing the dashed line on the 2D top canvas
-// ------
-
-function draw_line(canvas, p_a, p_b) {
-  p_a = convert_to_canvas_coordinates(p_a)
-  p_b = convert_to_canvas_coordinates(p_b)
-  let ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height); // erase previous line
-  ctx.setLineDash([5, 3]);/*dashes are 5px and spaces are 3px*/
-  ctx.beginPath();
-  ctx.moveTo(p_a[0],p_a[1]);
-  ctx.lineTo(p_b[0],p_b[1]);
-  ctx.strokeStyle = 'rgb(255, 255, 255)';
-  ctx.stroke();
-}
-
-function clear_2d_canvas(canvas) {
-  let ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height);
-}
 
 // ------
 // Initial wave position, angle, and some conversion functions used by the mouse events when updating them
@@ -579,6 +507,10 @@ const draw_frame = regl({
   count: 3,
 });
 
+// ------
+// MAIN ANIMATION LOOP
+// ------
+
 const animationTimeLimit = 2000; // -1 disables
 
 // Stuff for displaying frame number
@@ -627,3 +559,79 @@ function frameLoop() {
 })};
 
 frameLoop();
+
+// ------
+// MOUSE EVENTS
+//
+// This is still messy, particularly the logic for clearing the 2d canvas
+// ------
+
+let MOUSE_DOWN = false;
+
+function getCursorPosition(canvas, event) {
+  const rect = canvas.getBoundingClientRect()
+  let x = (event.clientX - rect.left) / glCanvas.width;
+  let y = 1.0 - (event.clientY - rect.top) / glCanvas.height;
+  return [x, y]
+}
+
+function convert_to_canvas_coordinates(coord) {
+  let x = coord[0] * topCanvas.width;
+  let y = (1 - coord[1]) * topCanvas.height;
+  return [x, y]
+}
+
+topCanvas.addEventListener('mousedown', function(e) {
+  MOUSE_DOWN = true;
+  wave_position = getCursorPosition(topCanvas, e);
+})
+
+topCanvas.addEventListener('mouseup', function(e) {
+  MOUSE_DOWN = false;
+  clear_2d_canvas(topCanvas)
+})
+
+topCanvas.addEventListener ("mouseout", function(e) {
+  // if mouse is down when the mouse leaves the canvas, set the MOUSE_DOWN flag to false and start the simulation
+  if (!MOUSE_DOWN) {
+    return;
+  }
+  MOUSE_DOWN = false;
+  clear_2d_canvas(topCanvas)
+})
+
+
+window.addEventListener('mousemove', function(e) { 
+  if (!MOUSE_DOWN) {
+    return;
+  }
+  let cursor_position = getCursorPosition(glCanvas, e);
+  let min_distance = 0.025;
+  if (distance(wave_position, cursor_position) > min_distance) {
+    wave_angle = angle(wave_position, cursor_position);
+    wave_angle_components = angle_components(angle);
+    draw_line(topCanvas, wave_position, cursor_position)
+  }
+})
+
+// ------
+// Drawing the dashed line on the 2D top canvas
+// ------
+
+function draw_line(canvas, p_a, p_b) {
+  p_a = convert_to_canvas_coordinates(p_a)
+  p_b = convert_to_canvas_coordinates(p_b)
+  let ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height); // erase previous line
+  ctx.setLineDash([5, 3]);/*dashes are 5px and spaces are 3px*/
+  ctx.beginPath();
+  ctx.moveTo(p_a[0],p_a[1]);
+  ctx.lineTo(p_b[0],p_b[1]);
+  ctx.strokeStyle = 'rgb(255, 255, 255)';
+  ctx.stroke();
+}
+
+function clear_2d_canvas(canvas) {
+  let ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height);
+}
