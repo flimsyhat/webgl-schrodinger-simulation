@@ -21,7 +21,7 @@
 
 let MOUSE_DOWN = false;
 
-const glCanvas    = document.getElementById('glCanvas');
+const glCanvas  = document.getElementById('glCanvas');
 const topCanvas = document.getElementById('2dCanvas');
 
 function getCursorPosition(canvas, event) {
@@ -61,7 +61,7 @@ window.addEventListener('mousemove', function(e) {
   if (!MOUSE_DOWN) {
     return;
   }
-  let cursor_position = getCursorPosition(topCanvas, e);
+  let cursor_position = getCursorPosition(glCanvas, e);
   let min_distance = 0.025;
   if (distance(wave_position, cursor_position) > min_distance) {
     wave_angle = angle(wave_position, cursor_position);
