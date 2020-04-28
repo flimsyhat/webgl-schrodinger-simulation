@@ -616,18 +616,18 @@ function angle_components(angle) {
 // Drawing the dashed line on the 2D top canvas
 // ------
 
-function convert_to_canvas_coordinates(coord) {
+function convert_to_canvas_coordinates(canvas, coord) {
   // convert from GL coordinates, which range between 0 and 1 and start from bottom left corner, to canvas coordinates, which are in px and start from top left corner
-  let x = coord[0] * topCanvas.width;
-  let y = (1 - coord[1]) * topCanvas.height;
+  let x = coord[0] * canvas.width;
+  let y = (1 - coord[1]) * canvas.height;
   return [x, y]
 }
 
 function draw_line(canvas, p_a, p_b) {
-  p_a = convert_to_canvas_coordinates(p_a)
-  p_b = convert_to_canvas_coordinates(p_b)
+  p_a = convert_to_canvas_coordinates(canvas, p_a)
+  p_b = convert_to_canvas_coordinates(canvas, p_b)
   let ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height); // erase previous line
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // erase previous line
   ctx.setLineDash([5, 3]);/*dashes are 5px and spaces are 3px*/
   ctx.beginPath();
   ctx.moveTo(p_a[0],p_a[1]);
@@ -638,5 +638,5 @@ function draw_line(canvas, p_a, p_b) {
 
 function clear_2d_canvas(canvas) {
   let ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, topCanvas.width, topCanvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
