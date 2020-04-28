@@ -2,7 +2,6 @@
 // Runge-Kutta method (RK4) for approximating the evolution of the time-dependent Schrodinger equation
 //
 // To Do:
-// - Fix mobile click behavior (doesn't work on mobile..)
 // - Make a few potentials (and ability to select between them)
 //    [x] Double slit
 //    [ ] Reflection / Transmission / Tunneling
