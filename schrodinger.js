@@ -24,34 +24,20 @@ const topCanvas = document.getElementById('2dCanvas');
 // Initial wave position, angle, and some conversion functions used by the mouse events when updating them
 // ------
 
-var wave_angle = Math.PI/2; // default wave direction is vertical, will be modified by mouseclick events
-
-var wave_position = [0.5, 0.25]; // initial wave position, will be modified mouseclick events
-
+// default wave direction is vertical, will be modified by mouseclick events
+var wave_angle = Math.PI/2;
 var wave_angle_components = angle_components(angle);
 
-function distance(p_a, p_b) {
-  return Math.sqrt((p_a[0] - p_b[0]) ** 2 + (p_a[1] - p_b[1]) ** 2)
-}
+// initial wave position, will be modified mouseclick events
+var wave_position = [0.5, 0.25];
 
-function angle(p_a, p_b) {
-  var dy = p_b[1] - p_a[1];
-  var dx = p_b[0] - p_a[0];
-  var theta = Math.atan2(dy, dx); // range (-PI, PI]
-  return theta;
-}
+// time step size -- arbitrary, but anything higher tends to blow up
+const dt = 0.25;
+// space step size (2px step)
+const dx = 1.0 / (glCanvas.width / 2);
 
-function angle_components(angle) {
-  return [Math.cos(wave_angle), Math.sin(wave_angle)]
-}
-
-// time step size
-const dt = 0.25; // arbitrary, but anything higher tends to blow up
-// space step size
-const dx = 1.0 / (glCanvas.width / 2); // 2px step
-
-var elapsedTime = 0; // used to keep track of time since last mouseclick, since the animation loop continues incrementing regardless
-
+// used to keep track of time since last mouseclick, since the animation loop continues incrementing regardless
+var elapsedTime = 0;
 // ------
 
 //using regl, a functional wrapper for webgl, to make everything simpler
@@ -174,7 +160,7 @@ const two_slit_potential = regl({
 });
 
 const create_texture = regl({
-  uniforms: { // inputs to the shader
+  uniforms: {
     k_combined_texture: kCombined, // final texture, which will get used as input after the first step
     time: regl.prop('time'),
     wave_position: regl.prop('wave_position'),
@@ -222,17 +208,15 @@ const create_texture = regl({
     }`,
 
   attributes: {
-    // triangle big enough to fill the screen
     position: [
       -4, 0,
       4, 4,
       4, -4
     ]
   },
-  // 3 vertices for triangle
   count: 3,
   
-  framebuffer: initialBuffer, // framebuffer we are writing the output to, storing gl_FragColor
+  framebuffer: initialBuffer,
 });
 
 const k1 = regl({
@@ -575,12 +559,6 @@ function getCursorPosition(canvas, event) {
   return [x, y]
 }
 
-function convert_to_canvas_coordinates(coord) {
-  let x = coord[0] * topCanvas.width;
-  let y = (1 - coord[1]) * topCanvas.height;
-  return [x, y]
-}
-
 topCanvas.addEventListener('mousedown', function(e) {
   MOUSE_DOWN = true;
   wave_position = getCursorPosition(topCanvas, e);
@@ -615,8 +593,35 @@ window.addEventListener('mousemove', function(e) {
 })
 
 // ------
+// Conversion functions used by the mouseclick events
+// ------
+
+function distance(p_a, p_b) {
+  return Math.sqrt((p_a[0] - p_b[0]) ** 2 + (p_a[1] - p_b[1]) ** 2)
+}
+
+function angle(p_a, p_b) {
+  var dy = p_b[1] - p_a[1];
+  var dx = p_b[0] - p_a[0];
+  var theta = Math.atan2(dy, dx); // range (-PI, PI]
+  return theta;
+}
+
+function angle_components(angle) {
+  // takes an angle and returns the x and y position on the unit circle
+  return [Math.cos(wave_angle), Math.sin(wave_angle)]
+}
+
+// ------
 // Drawing the dashed line on the 2D top canvas
 // ------
+
+function convert_to_canvas_coordinates(coord) {
+  // convert from GL coordinates, which range between 0 and 1 and start from bottom left corner, to canvas coordinates, which are in px and start from top left corner
+  let x = coord[0] * topCanvas.width;
+  let y = (1 - coord[1]) * topCanvas.height;
+  return [x, y]
+}
 
 function draw_line(canvas, p_a, p_b) {
   p_a = convert_to_canvas_coordinates(p_a)
