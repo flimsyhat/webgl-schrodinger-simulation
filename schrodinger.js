@@ -83,16 +83,6 @@ const setupDefault = regl({
   }
 });
 
-function switchTexture(initialTexture, t) {
-  // after the first frame, switch the simulation to use the output texture as input
-  if (t > 1) {
-    return kCombined;
-  }
-  else {
-    return initialTexture;
-  }
-}
-
 // utility function, included in shaders k1, k2, k3, and k4
 const divide_by_sqrt_neg_one = `
   vec2 divide_by_sqrt_neg_one(vec2 c) { 
