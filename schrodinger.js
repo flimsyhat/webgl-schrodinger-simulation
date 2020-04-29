@@ -80,7 +80,15 @@ const setupDefault = regl({
     time: elapsedTime,
     potential_texture: potentialBuffer,
     wave_texture: initialBuffer
-  }
+  },
+  attributes: {
+    position: [
+      -4, 0,
+      4, 4,
+      4, -4
+    ]
+  },
+  count: 3,
 });
 
 // utility function, included in shaders k1, k2, k3, and k4
@@ -196,15 +204,6 @@ const create_texture = regl({
       // set the color -- we are storing the real component in the R channel and the imaginary component in the G channel
       gl_FragColor = vec4(wavefunction, 0.0, 1.0);
     }`,
-
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
   
   framebuffer: initialBuffer,
 });
@@ -236,15 +235,6 @@ vert:`
       vec2 st = gl_FragCoord.xy / u_resolution;
       gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
-  
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
   
   framebuffer: k1Buffer,
 });
@@ -283,15 +273,6 @@ const k2 = regl({
       gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
   
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
-  
   framebuffer: k2Buffer,
 });
 
@@ -328,15 +309,6 @@ const k3 = regl({
       vec2 st = gl_FragCoord.xy / u_resolution;
       gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
-
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
   
   framebuffer: k3Buffer,
 });
@@ -374,15 +346,6 @@ const k4 = regl({
       vec2 st = gl_FragCoord.xy / u_resolution;
       gl_FragColor = vec4(k(st), 0.0, 1.0);
     }`,
-
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
   
   framebuffer: k4Buffer,
 });
@@ -424,15 +387,6 @@ const combine_k = regl({
       vec2 st = gl_FragCoord.xy / u_resolution;
       gl_FragColor = vec4(combined_k(st), 0.0, 1.0);
     }`,
-
-  attributes: {
-    position: [
-      -4, 0,
-      4, 4,
-      4, -4
-    ]
-  },
-  count: 3,
   
   framebuffer: kCombined,
 });

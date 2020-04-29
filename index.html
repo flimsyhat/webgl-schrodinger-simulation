@@ -13,16 +13,18 @@
     </style>
 </head>
 <body class="bg-black white pa4">
-  <p class="f4 mb2">WebGL simulation of the Schrödinger equation</p>
-  <div class="relative" style="height: 512px; width: 512px;">
-    <canvas width="512" height="512" id="glCanvas" class="absolute"></canvas>
-    <canvas width="512" height="512" id="2dCanvas" class="absolute"></canvas>
-    <div class="absolute bottom-0 ml3">
-      <p class="mb0">Frame: <span id="frame" class="mono">0</span> of <span id="frame_limit" class="mono">0</span></p>
-      <p class="mt0"><span class="green">Real</span> <span class="blue">Imaginary</span></p>
+  <p class="f4 mb3">WebGL simulation of the Schrödinger equation</p>
+  <div class="relative fl">
+    <div style="height: 512px; width: 512px;">
+      <canvas width="512" height="512" id="glCanvas" class="absolute"></canvas>
+      <canvas width="512" height="512" id="2dCanvas" class="absolute"></canvas>
+      <div class="absolute ml3">
+        <p class="mb0">Frame: <span id="frame" class="mono">0</span> of <span id="frame_limit" class="mono">0</span></p>
+        <p class="mt0"><span class="green">Real</span> <span class="blue">Imaginary</span></p>
+      </div>
     </div>
+    <p class="measure">Click and drag anywhere on the canvas to set the initial wave position and direction. Release to start the simulation.</p>
   </div>
-  <p class="measure relative">Click and drag anywhere on the canvas to set the initial wave position and direction. Release to start the simulation.</p>
   <script src="schrodinger.js" type="text/javascript"></script>
 </body>
 </html>
