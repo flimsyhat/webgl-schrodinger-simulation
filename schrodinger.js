@@ -26,7 +26,7 @@ const topCanvas = document.getElementById('2dCanvas');
 
 // default wave direction is vertical, will be modified by mouseclick events
 var wave_angle = Math.PI/2;
-var wave_angle_components = angle_components(angle);
+var wave_unit_components = unit_components(wave_angle);
 
 // initial wave position, will be modified mouseclick events
 var wave_position = [0.5, 0.25];
@@ -36,7 +36,7 @@ const dt = 0.25;
 // space step size (2px step)
 const dx = 1.0 / (glCanvas.width / 2);
 
-// used to keep track of time since last mouseclick, since the animation loop continues incrementing regardless
+// keeps track of time since last mouseclick, since the animation loop continues incrementing regardless. this will determine the evolution step of the simulation
 var elapsedTime = 0;
 // ------
 
@@ -502,7 +502,7 @@ const animationTimeLimit = 2000; // -1 disables
 document.getElementById("frame_limit").innerHTML = animationTimeLimit;
 const frame_display = document.getElementById("frame");
 
-// Create potential texture
+// Create the potential texture outside the animation loop, since we don't need to update it
 two_slit_potential();
 
 // main animation loop
@@ -525,7 +525,7 @@ function frameLoop() {
     
     // step through approximation, rendering each step to a frame buffer 
     setupDefault({}, () => {
-      create_texture({time: elapsedTime, wave_position: wave_position, wave_angles: wave_angle_components});
+      create_texture({time: elapsedTime, wave_position: wave_position, wave_angles: wave_unit_components});
       k1();
       k2();
       k3();
@@ -546,8 +546,6 @@ frameLoop();
 
 // ------
 // MOUSE EVENTS
-//
-// This is still messy...
 // ------
 
 let MOUSE_DOWN = false;
@@ -559,20 +557,18 @@ function getCursorPosition(canvas) {
   return [x, y]
 }
 
-// START
+// START of mouse/touch down
 
 topCanvas.addEventListener('pointerdown', function(e) {
   MOUSE_DOWN = true;
   wave_position = getCursorPosition(glCanvas);
-  console.log("mousedown")
 })
 
-// END
+// END of mouse/touch down
 
 topCanvas.addEventListener('pointerup', function(e) {
   MOUSE_DOWN = false;
   clear_2d_canvas(topCanvas)
-  console.log("mouseup")
 })
 
 topCanvas.addEventListener ("pointerout", function(e) {
@@ -584,27 +580,27 @@ topCanvas.addEventListener ("pointerout", function(e) {
   clear_2d_canvas(topCanvas)
 })
 
-// WHILE
+// WHILE mouse/touch is down
 
 window.addEventListener('pointermove', function(e) { 
   if (!MOUSE_DOWN) {
     return;
   }
-  update_wave_angle();
-})
-
-function update_wave_angle() {
   let cursor_position = getCursorPosition(glCanvas);
   let min_distance = 0.025;
   if (distance(wave_position, cursor_position) > min_distance) {
-    wave_angle = angle(wave_position, cursor_position);
-    wave_angle_components = angle_components(angle);
-    draw_line(topCanvas, wave_position, cursor_position)
+    update_wave_direction(wave_position, cursor_position);
+    draw_line(topCanvas, wave_position, cursor_position);
   }
+})
+
+function update_wave_direction(p_a, p_b) {
+  wave_angle = angle(p_a, p_b);
+  wave_unit_components = unit_components(wave_angle);
 }
 
 // ------
-// Conversion functions used by the mouseclick events
+// Conversion functions
 // ------
 
 function distance(p_a, p_b) {
@@ -618,14 +614,10 @@ function angle(p_a, p_b) {
   return theta;
 }
 
-function angle_components(angle) {
+function unit_components(angle) {
   // takes an angle and returns the x and y position on the unit circle
-  return [Math.cos(wave_angle), Math.sin(wave_angle)]
+  return [Math.cos(angle), Math.sin(angle)]
 }
-
-// ------
-// Drawing the dashed line on the 2D top canvas
-// ------
 
 function convert_to_canvas_coordinates(canvas, coord) {
   // convert from GL coordinates, which range between 0 and 1 and start from bottom left corner, to canvas coordinates, which are in px and start from top left corner
@@ -633,6 +625,10 @@ function convert_to_canvas_coordinates(canvas, coord) {
   let y = (1 - coord[1]) * canvas.height;
   return [x, y]
 }
+
+// ------
+// Drawing the dashed line on the 2D top canvas
+// ------
 
 function draw_line(canvas, p_a, p_b) {
   p_a = convert_to_canvas_coordinates(canvas, p_a)
