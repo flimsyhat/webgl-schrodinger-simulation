@@ -81,6 +81,12 @@ const setupDefault = regl({
     potential_texture: potentialBuffer,
     wave_texture: initialBuffer
   },
+  viewport: {
+    x: 200,
+    y: 200,
+    w: 100,
+    h: 200
+  },
   attributes: {
     position: [
       -4, 0,
@@ -135,6 +141,7 @@ const two_slit_potential = regl({
                    + 3.0 * float(p.y < (0.5 + dx) && p.y > (0.5 - dx))
                    * float(p.x < 0.4 || p.x > 0.45) * float(p.x < 0.55 || p.x > 0.6);
     }
+
     void main () {
       // normalize the coordinates to the resolution of the canvas
       vec2 st = gl_FragCoord.xy / u_resolution;
